@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ES MCP 服务器 (SSE)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "es_mcp_server.server",
+      "args": ["--transport", "sse", "--host", "192.168.0.13", "--port", "9200"],
+      "justMyCode": false
+    },
+    {
+      "name": "ES MCP 客户端",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "es_mcp_client.client",
+      "args": ["--url", "http://localhost:8000/sse"],
+      "justMyCode": false
+    }
+  ]
+} 

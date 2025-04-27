@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "elasticsearch-mcp-server": {
+      "command": "uvx",
+      "args": ["es-mcp-server"],
+      "env": {
+        "ES_HOST": "192.168.0.13",
+        "ES_PORT": "9200",
+        "ES_VERSION": "8"
+      }
+    }
+  }
+} 
