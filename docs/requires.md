@@ -50,40 +50,48 @@ pip install mcp
 5. 单元测试支持
    1. 为服务端和客户端程序提供所有单元测试，包名test
    2. 在项目工程描述中，提供dev依赖选项，支持可选的pytest依赖支持
-6. 对于上述所有的python程序，检查每个import 的对象是否存在，如果不存在，则停止生成过程
-7.  提供一个claude desktop的mcpServers配置demo（json文件，放在/claude_config_examples目录下），以便于说明如何在claude client中如何使用本mcp server，该配置包含如下配置实例
+6.  提供一个claude desktop的mcpServers配置demo（json文件，放在/claude_config_examples目录下），以便于说明如何在claude client中如何使用本mcp server，该配置包含如下配置实例
    1.  一个Elasticsearch的stdio方式运行的mcp server实例
        1.  需要按照最新的MCP规范提供配置，使用对象格式（非数组格式），包含command、args、env等参数，其形式语言描述如下
-           1.  <config>       ::= { "mcpServers": <servers> }
-           2.  <servers>      ::= { <serverName>: <serverConfig> }
-           3.  <serverName>   ::=  <string>   // 可扩展为其他服务器名
-           4.  <serverConfig> ::= { "command" : "uvx" ,
-                                    "args" : [ "es-mcp-server" ],
-                                    "env" : [ <envs> ]
-                                    }  
-           5.  <envs>       ::= <kv> (, <kv>)*
-           6.  <kv>         ::= <k> : <v>
-           7.  <k>          ::= "ES_HOST" | "ES_PORT" | "ES_USERNAME"| "ES_PASSPORT" ...
-           8.  <v>          ::= <string>
+   
+   
+   ``` bnf
+   <config>       ::= { "mcpServers": <servers> }
+   <servers>      ::= { <serverName>: <serverConfig> }
+   <serverName>   ::=  <string>   // 可扩展为其他服务器名
+   <serverConfig> ::= { "command" : "uvx" ,
+                        "args" : [ "es-mcp-server" ],
+                        "env" : [ <envs> ]
+                      }  
+   <envs>       ::= <kv> (, <kv>)*
+   <kv>         ::= <k> : <v>
+   <k>          ::= "ES_HOST" | "ES_PORT" | "ES_USERNAME"| "ES_PASSPORT" ...
+   <v>          ::= <string>
+
+   ```
+
        2.  样例配置细节类似 @https://github.com/ahujasid/blender-mcp?tab=readme-ov-file#claude-for-desktop-integration
    2.  一个Elasticsearch的sse方式运行的mcp server实例
        1.  其形式语言描述如下：
-           1.  <config>       ::= { "mcpServers": <servers> }
-           2.  <servers>      ::= { <serverName>: <serverConfig> }
-           3.  <serverName>   ::=  <string>   // 可扩展为其他服务器名
-           4.  <serverConfig> ::= { "url" : "http://<hostname>:<port>/sse"       }  
+   ``` bnf
+   <config>       ::= { "mcpServers": <servers> }
+   <servers>      ::= { <serverName>: <serverConfig> }
+   <serverName>   ::=  <string>   // 可扩展为其他服务器名
+   <serverConfig> ::= { "url" : "http://<hostname>:<port>/sse"       }  
+   ```
        2.  样例配置细节类似 @https://github.com/co-browser/browser-use-mcp-server?tab=readme-ov-file#sse-mode-client-configuration
-8.  提供markdown格式的readme文件
+7.  提供markdown格式的readme文件
     1.  内容包括
         1.  本项目的目录结构
         2.  服务器的功能和使用说明
         3.  客户端使用说明
         4.  对接其他工具的使用方法（以对接claude的客户端来说明）
         5.  注明：本项目所有的代码、文档、配置示例都是用cursor的claude-3.7-sonnet根据[需求文档](/docs/requires.md) 生成出来的。您只需打开本文档，按ctrl-l， 然后输入“基于本文件生成项目所有程序”，点按发送按钮即可
-    2.  提供中、英、法、德、日等语言版本的readme文件，
+    2.  提供中、英、法、德、日等语言版本的readme文件，缺省为中文，
     3.  在readme文件中加入其他语种readme文件的交叉链接，链接的icon为语种对应的国家的国旗表情符号
-9.  添加一个.gitignore 文件，将一般python的中间文件和目标文件以及build生成的中间生成文件和目标文件都ignore掉
-10. 添加一个在vscode中进行debug 服务端和客户端的配置文件（sse模式），debug 类型为debugpy
+8.  添加一个.gitignore 文件，将一般python的中间文件和目标文件以及build生成的中间生成文件和目标文件都ignore掉
+9.  添加一个在vscode中进行debug 服务端和客户端的配置文件（sse模式），debug 类型为debugpy
+10. 添加MIT授权
    
 
 
