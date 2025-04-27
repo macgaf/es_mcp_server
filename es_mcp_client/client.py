@@ -2,6 +2,8 @@
 Elasticsearch MCP 客户端
 用于验证 MCP 服务器的有效性
 """
+
+import ast
 import argparse
 import asyncio
 import json
@@ -12,6 +14,7 @@ import sys
 
 from mcp import ClientSession
 from mcp.client.sse import sse_client
+
 
 # 配置日志
 logging.basicConfig(
@@ -39,8 +42,9 @@ async def test_list_indices(client):
     logger.info("测试: 列出所有索引")
     try:
         response = await client.invoke("list_indices", {})
-        logger.info(f"返回结果: {json.dumps(response, ensure_ascii=False, indent=2)}")
-        return response.get("indices", [])
+        logger.info(f"返回结果: {response.content[0].text}")
+        rco = json.loads(response.content[0].text)
+        return rco['indices']
     except Exception as e:
         logger.error(f"列出索引失败: {str(e)}\n{traceback.format_exc()}")
         raise
@@ -50,7 +54,7 @@ async def test_get_mappings(client, index):
     logger.info(f"测试: 获取索引 {index} 的映射")
     try:
         response = await client.invoke("get_mappings", {"index": index})
-        logger.info(f"返回结果: {json.dumps(response, ensure_ascii=False, indent=2)}")
+        logger.info(f"返回结果: {response.content[0].text}")
         return response
     except Exception as e:
         logger.error(f"获取索引映射失败: {str(e)}\n{traceback.format_exc()}")
@@ -70,7 +74,7 @@ async def test_search(client, index):
             "index": index,
             "queryBody": query_body
         })
-        logger.info(f"返回结果中的文档数: {len(response.get('hits', {}).get('hits', []))}")
+        logger.info(f"返回结果中的文档数: {response.content[0].text}")
         return response
     except Exception as e:
         logger.error(f"搜索失败: {str(e)}\n{traceback.format_exc()}")
@@ -81,7 +85,7 @@ async def test_cluster_health(client):
     logger.info("测试: 获取集群健康状态")
     try:
         response = await client.invoke("get_cluster_health", {})
-        logger.info(f"返回结果: {json.dumps(response, ensure_ascii=False, indent=2)}")
+        logger.info(f"返回结果: {response.content[0].text}")
         return response
     except Exception as e:
         logger.error(f"获取集群健康状态失败: {str(e)}\n{traceback.format_exc()}")
@@ -92,8 +96,9 @@ async def test_cluster_stats(client):
     logger.info("测试: 获取集群统计信息")
     try:
         response = await client.invoke("get_cluster_stats", {})
-        logger.info(f"集群名称: {response.get('cluster_name')}")
-        logger.info(f"节点数: {response.get('nodes', {}).get('count', {})}")
+        ro = ast.literal_eval(response.content[0].text)
+        logger.info(f"集群名称: {ro.get('cluster_name')}")
+        logger.info(f"节点数: {ro.get('nodes', {}).get('count', {})}")
         return response
     except Exception as e:
         logger.error(f"获取集群统计信息失败: {str(e)}\n{traceback.format_exc()}")
@@ -109,38 +114,35 @@ async def run_tests(url: str):
             logger.info("客户端连接成功")
             
             # 创建 MCP 会话
-            session = ClientSession(read_stream, write_stream)
+            async with ClientSession(read_stream, write_stream) as session:
             
-            # 等待会话初始化
-            await session.initialize()
-            
-            # 创建Elasticsearch MCP客户端
-            client = ESMCPClient(session)
+                # 等待会话初始化
+                await session.initialize()
+                
+                # 创建Elasticsearch MCP客户端
+                client = ESMCPClient(session)
 
-            try:
-                # 运行测试
-                indices = await test_list_indices(client)
-                
-                if indices:
-                    # 选择第一个索引进行测试
-                    test_index = indices[0]
-                    logger.info(f"选择索引 {test_index} 进行后续测试")
+                try:
+                    # 运行测试
+                    indices = await test_list_indices(client)
                     
-                    await test_get_mappings(client, test_index)
-                    await test_search(client, test_index)
-                else:
-                    logger.warning("未找到索引，跳过相关测试")
-                
-                await test_cluster_health(client)
-                await test_cluster_stats(client)
-                
-                logger.info("所有测试完成")
-            except Exception as e:
-                logger.error(f"测试执行过程中出错: {str(e)}\n{traceback.format_exc()}")
-                return False
-            finally:
-                # 确保关闭会话
-                await session.shutdown()
+                    if indices:
+                        # 选择第一个索引进行测试
+                        test_index = indices[0]
+                        logger.info(f"选择索引 {test_index} 进行后续测试")
+                        
+                        await test_get_mappings(client, test_index)
+                        await test_search(client, test_index)
+                    else:
+                        logger.warning("未找到索引，跳过相关测试")
+                    
+                    await test_cluster_health(client)
+                    await test_cluster_stats(client)
+                    
+                    logger.info("所有测试完成")
+                except Exception as e:
+                    logger.error(f"测试执行过程中出错: {str(e)}\n{traceback.format_exc()}")
+                    return False
     except Exception as e:
         logger.error(f"连接到服务器失败: {str(e)}\n{traceback.format_exc()}")
         return False
