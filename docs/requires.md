@@ -21,21 +21,17 @@ pip install mcp
    1. 入口为es_mcp_server.server
    2. 支持uvx启动
    3. 同时支持支持对接es7 和es8服务器
-      1. 对于es7
+      1. 针对es服务器的版本，需要使用不同版本的es库支持，也就是说本项目要同时支持v7 和v8的库
+      2. 对于es7
          1. 客户端库为elasticsearch7
          2. es api调用时，从response中获取返回数据
          3. 用户名密码使用http_auth
-      2. 对于es8
+         4. 使用 ssl 而不是 tls 进行 SSL/TLS 配置
+      3. 对于es8
          1. 客户端库为elasticsearch
          2. es api调用是，直接从response.body中获取返回数据
          3. 用户名密码使用basic_auth
-      3. 异步方式访问es服务器
-      4. 针对es服务器的版本，需要使用不同版本的es库支持，也就是说本项目要同时支持v7 和v8的库
-         1. 针对es7的api特点，做出如下调整
-            1. 使用 ssl 而不是 tls 进行 SSL/TLS 配置
-            2. 从 response.body 中获取响应内容
-            3. 对索引映射和搜索功能进行v7版本api的适配
-      5. 在项目工程描述中，基础依赖包要同时包含es7和es8的支持
+      4. 异步方式访问es服务器
    4. 支持用户名口令模式、支持api key 模式
       1. 支持环境变量
       2. 支持配置文件中进行配置
