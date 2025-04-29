@@ -60,9 +60,11 @@ def mock_es_client():
 
 @pytest.mark.asyncio
 @patch("es_mcp_server.tools.create_es_client")
-async def test_list_indices(mock_create_client, mock_es_client):
+@patch("es_mcp_server.tools.process_response")
+async def test_list_indices(mock_process_response, mock_create_client, mock_es_client):
     """测试列出索引功能"""
     mock_create_client.return_value = mock_es_client
+    mock_process_response.return_value = MOCK_INDICES
     
     result = await list_indices()
     
@@ -73,9 +75,11 @@ async def test_list_indices(mock_create_client, mock_es_client):
 
 @pytest.mark.asyncio
 @patch("es_mcp_server.tools.create_es_client")
-async def test_get_mappings(mock_create_client, mock_es_client):
+@patch("es_mcp_server.tools.process_response")
+async def test_get_mappings(mock_process_response, mock_create_client, mock_es_client):
     """测试获取索引映射功能"""
     mock_create_client.return_value = mock_es_client
+    mock_process_response.return_value = MOCK_MAPPINGS
     
     result = await get_mappings("index1")
     
@@ -84,9 +88,11 @@ async def test_get_mappings(mock_create_client, mock_es_client):
 
 @pytest.mark.asyncio
 @patch("es_mcp_server.tools.create_es_client")
-async def test_search(mock_create_client, mock_es_client):
+@patch("es_mcp_server.tools.process_response")
+async def test_search(mock_process_response, mock_create_client, mock_es_client):
     """测试搜索功能"""
     mock_create_client.return_value = mock_es_client
+    mock_process_response.return_value = MOCK_SEARCH_RESULT
     
     query_body = {"query": {"match_all": {}}}
     result = await search("index1", query_body)
@@ -96,9 +102,11 @@ async def test_search(mock_create_client, mock_es_client):
 
 @pytest.mark.asyncio
 @patch("es_mcp_server.tools.create_es_client")
-async def test_get_cluster_health(mock_create_client, mock_es_client):
+@patch("es_mcp_server.tools.process_response")
+async def test_get_cluster_health(mock_process_response, mock_create_client, mock_es_client):
     """测试获取集群健康状态功能"""
     mock_create_client.return_value = mock_es_client
+    mock_process_response.return_value = MOCK_HEALTH
     
     result = await get_cluster_health()
     
@@ -107,9 +115,11 @@ async def test_get_cluster_health(mock_create_client, mock_es_client):
 
 @pytest.mark.asyncio
 @patch("es_mcp_server.tools.create_es_client")
-async def test_get_cluster_stats(mock_create_client, mock_es_client):
+@patch("es_mcp_server.tools.process_response")
+async def test_get_cluster_stats(mock_process_response, mock_create_client, mock_es_client):
     """测试获取集群统计信息功能"""
     mock_create_client.return_value = mock_es_client
+    mock_process_response.return_value = MOCK_STATS
     
     result = await get_cluster_stats()
     

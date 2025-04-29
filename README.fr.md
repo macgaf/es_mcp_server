@@ -41,11 +41,11 @@ Autres langues : [🇨🇳 中文](./README.md) | [🇺🇸 English](./README.en
 
 Le serveur MCP Elasticsearch fournit les outils suivants :
 
-1. **Liste des Index** - Afficher tous les index du cluster ES
-2. **Obtenir les Mappings d'Index** - Renvoyer les informations de mapping des champs pour un index spécifié
-3. **Recherche** - Exécuter des requêtes de recherche dans des index spécifiés avec prise en charge de la mise en évidence
-4. **Santé du Cluster** - Obtenir des informations sur l'état de santé du cluster ES
-5. **Statistiques du Cluster** - Obtenir des informations statistiques d'exécution pour le cluster ES
+1. **list_indices** - Afficher tous les index du cluster ES
+2. **get_mappings** - Renvoyer les informations de mapping des champs pour un index spécifié
+3. **search** - Exécuter des requêtes de recherche dans des index spécifiés avec prise en charge de la mise en évidence
+4. **get_cluster_health** - Obtenir des informations sur l'état de santé du cluster ES
+5. **get_cluster_stats** - Obtenir des informations statistiques d'exécution pour le cluster ES
 
 ### Installation
 
@@ -172,4 +172,4 @@ Ce projet inclut des configurations de débogage VSCode. Après avoir ouvert VSC
 
 ---
 
-*Tout le code, la documentation et les exemples de configuration de ce projet ont été générés par claude-3.7-sonnet de cursor, basé sur le [document des exigences](/docs/requires.md). Vous pouvez simplement ouvrir ce document, appuyer sur ctrl-l, puis taper "générer tous les programmes du projet basés sur ce fichier" et cliquer sur le bouton d'envoi.* 
+*La majorité du code, de la documentation et des exemples de configuration de ce projet ont été générés par claude-3.7-sonnet de cursor, basé sur le [document des exigences](/docs/requires.md) (prompt : générer tous les programmes du projet basés sur ce fichier).* 
