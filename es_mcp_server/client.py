@@ -53,7 +53,10 @@ def _get_connection_params() -> Dict[str, Any]:
     
     # 添加认证信息
     if es_config.username and es_config.password:
-        params["basic_auth"] = (es_config.username, es_config.password)
+        if es_config.es_version == 7:
+            params["http_auth"] = (es_config.username, es_config.password)
+        else:
+            params["basic_auth"] = (es_config.username, es_config.password)
     elif es_config.api_key:
         params["api_key"] = es_config.api_key
     
@@ -70,8 +73,8 @@ async def process_response(response: Any) -> Any:
         处理后的响应数据
     """
     if es_config.es_version == 7:
-        # ES7 从 response.body 获取数据
-        return response.body
+        # ES7 从 response 获取数据
+        return response
     else:
-        # ES8 直接返回 response
-        return response 
+        # ES8 response.body 获取数据
+        return response.body

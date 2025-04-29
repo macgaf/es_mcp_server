@@ -23,10 +23,12 @@ pip install mcp
    3. 同时支持支持对接es7 和es8服务器
       1. 对于es7
          1. 客户端库为elasticsearch7
-         2. es api调用时，从response.body中获取返回数据
+         2. es api调用时，从response中获取返回数据
+         3. 用户名密码使用http_auth
       2. 对于es8
          1. 客户端库为elasticsearch
-         2. es api调用是，直接从response中获取返回数据
+         2. es api调用是，直接从response.body中获取返回数据
+         3. 用户名密码使用basic_auth
       3. 异步方式访问es服务器
       4. 针对es服务器的版本，需要使用不同版本的es库支持，也就是说本项目要同时支持v7 和v8的库
          1. 针对es7的api特点，做出如下调整

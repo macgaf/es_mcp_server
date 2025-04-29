@@ -201,9 +201,9 @@ async def test_es_connection():
         logger.info("正在测试与 Elasticsearch 的连接...")
         client = await create_es_client()
         # 简单的 ping 测试
-        info = await client.info()
-        logger.info(f"Elasticsearch 连接成功! 版本: {info['version']['number']}")
-        await client.close()
+        async with client:
+            info = await client.info()
+            logger.info(f"Elasticsearch 连接成功! 版本: {info['version']['number']}")
     except Exception as e:
         logger.error(f"Elasticsearch 连接失败: {str(e)}")
         raise

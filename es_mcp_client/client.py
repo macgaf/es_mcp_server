@@ -96,7 +96,7 @@ async def test_cluster_stats(client):
     logger.info("测试: 获取集群统计信息")
     try:
         response = await client.invoke("get_cluster_stats", {})
-        ro = ast.literal_eval(response.content[0].text)
+        ro = json.loads(response.content[0].text)
         logger.info(f"集群名称: {ro.get('cluster_name')}")
         logger.info(f"节点数: {ro.get('nodes', {}).get('count', {})}")
         return response
