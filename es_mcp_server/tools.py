@@ -21,11 +21,9 @@ async def list_indices() -> List[str]:
         response = await client.indices.get_alias(index="*")
         result = await process_response(response)
         indices = list(result.keys())
-        await client.close()
         return indices
     except Exception as e:
         logger.error(f"列出索引失败: {str(e)}")
-        await client.close()
         raise
 
 async def get_mappings(index: str) -> Dict[str, Any]:
@@ -42,11 +40,9 @@ async def get_mappings(index: str) -> Dict[str, Any]:
     try:
         response = await client.indices.get_mapping(index=index)
         result = await process_response(response)
-        await client.close()
         return result
     except Exception as e:
         logger.error(f"获取索引 {index} 的映射失败: {str(e)}")
-        await client.close()
         raise
 
 async def search(
@@ -73,11 +69,9 @@ async def search(
 
         response = await client.search(index=index, body=query_body)
         result = await process_response(response)
-        await client.close()
         return result
     except Exception as e:
         logger.error(f"搜索索引 {index} 失败: {str(e)}")
-        await client.close()
         raise
 
 async def get_cluster_health() -> Dict[str, Any]:
@@ -91,11 +85,9 @@ async def get_cluster_health() -> Dict[str, Any]:
     try:
         response = await client.cluster.health()
         result = await process_response(response)
-        await client.close()
         return result
     except Exception as e:
         logger.error(f"获取集群健康状态失败: {str(e)}")
-        await client.close()
         raise
 
 async def get_cluster_stats() -> Dict[str, Any]:
@@ -109,9 +101,7 @@ async def get_cluster_stats() -> Dict[str, Any]:
     try:
         response = await client.cluster.stats()
         result = await process_response(response)
-        await client.close()
         return result
     except Exception as e:
         logger.error(f"获取集群统计信息失败: {str(e)}")
-        await client.close()
         raise 

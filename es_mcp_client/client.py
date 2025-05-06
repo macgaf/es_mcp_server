@@ -8,12 +8,15 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import traceback
-from typing import Any, Dict, List, Optional
+import time
+from typing import Any, Dict, List, Optional, Tuple
 import sys
 
 from mcp import ClientSession
 from mcp.client.sse import sse_client
+import anyio
 
 
 # 配置日志
@@ -34,20 +37,31 @@ class ESMCPClient:
     async def invoke(self, method: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """调用 MCP 方法"""
         # 使用MCP会话调用工具
-        result = await self.session.call_tool(method, params)
-        return result
+        try:
+            result = await self.session.call_tool(method, params)
+            return result
+        except anyio.EndOfStream as e:
+            logger.error(f"调用工具时连接中断: {str(e)}")
+            raise RuntimeError(f"SSE连接已断开，无法调用工具 {method}: {str(e)}") from e
+        except Exception as e:
+            logger.error(f"调用工具 {method} 时出错: {str(e)}")
+            raise
 
 async def test_list_indices(client):
     """测试列出索引工具"""
     logger.info("测试: 列出所有索引")
     try:
         response = await client.invoke("list_indices", {})
+        if not response or not response.content:
+            logger.error("服务器返回空响应")
+            return []
+            
         logger.info(f"返回结果: {response.content[0].text}")
         rco = json.loads(response.content[0].text)
-        return rco['indices']
+        return rco.get('indices', [])
     except Exception as e:
         logger.error(f"列出索引失败: {str(e)}\n{traceback.format_exc()}")
-        raise
+        return []
 
 async def test_get_mappings(client, index):
     """测试获取索引映射工具"""
@@ -108,46 +122,71 @@ async def run_tests(url: str):
     """运行所有测试"""
     logger.info(f"连接到 MCP 服务器: {url}")
     
-    try:
-        # 使用异步上下文管理器创建 SSE 客户端
-        async with sse_client(url) as (read_stream, write_stream):
-            logger.info("客户端连接成功")
-            
-            # 创建 MCP 会话
-            async with ClientSession(read_stream, write_stream) as session:
-            
-                # 等待会话初始化
-                await session.initialize()
-                
-                # 创建Elasticsearch MCP客户端
-                client = ESMCPClient(session)
-
-                try:
-                    # 运行测试
-                    indices = await test_list_indices(client)
-                    
-                    if indices:
-                        # 选择第一个索引进行测试
-                        test_index = indices[0]
-                        logger.info(f"选择索引 {test_index} 进行后续测试")
-                        
-                        await test_get_mappings(client, test_index)
-                        await test_search(client, test_index)
-                    else:
-                        logger.warning("未找到索引，跳过相关测试")
-                    
-                    await test_cluster_health(client)
-                    await test_cluster_stats(client)
-                    
-                    logger.info("所有测试完成")
-                except Exception as e:
-                    logger.error(f"测试执行过程中出错: {str(e)}\n{traceback.format_exc()}")
-                    return False
-    except Exception as e:
-        logger.error(f"连接到服务器失败: {str(e)}\n{traceback.format_exc()}")
-        return False
+    # 重试连接的次数
+    max_retries = 3
+    retry_interval = 2
     
-    return True
+    for attempt in range(max_retries):
+        try:
+            # 使用异步上下文管理器创建 SSE 客户端
+            async with sse_client(url, reconnect_interval=1) as (read_stream, write_stream):
+                logger.info("客户端连接成功")
+                
+                # 创建 MCP 会话，设置超时
+                session_params = {}
+                async with ClientSession(read_stream, write_stream, **session_params) as session:
+                
+                    # 等待会话初始化
+                    with anyio.fail_after(10):  # 10秒超时
+                        await session.initialize()
+                    
+                    # 创建Elasticsearch MCP客户端
+                    client = ESMCPClient(session)
+
+                    try:
+                        # 运行测试
+                        indices = await test_list_indices(client)
+                        
+                        if indices:
+                            # 选择第一个索引进行测试
+                            test_index = indices[0]
+                            logger.info(f"选择索引 {test_index} 进行后续测试")
+                            
+                            await test_get_mappings(client, test_index)
+                            await test_search(client, test_index)
+                        else:
+                            logger.warning("未找到索引，跳过相关测试")
+                        
+                        await test_cluster_health(client)
+                        await test_cluster_stats(client)
+                        
+                        logger.info("所有测试完成")
+                        return True
+                    except (anyio.EndOfStream, asyncio.CancelledError) as e:
+                        logger.error(f"SSE连接中断: {str(e)}")
+                        # 如果不是最后一次尝试，则重试
+                        if attempt < max_retries - 1:
+                            logger.info(f"将在 {retry_interval} 秒后重试连接...")
+                            await asyncio.sleep(retry_interval)
+                        else:
+                            return False
+                    except Exception as e:
+                        logger.error(f"测试执行过程中出错: {str(e)}\n{traceback.format_exc()}")
+                        return False
+                        
+        except (anyio.EndOfStream, ConnectionError, OSError) as e:
+            logger.error(f"连接到服务器失败 (尝试 {attempt+1}/{max_retries}): {str(e)}")
+            if attempt < max_retries - 1:
+                logger.info(f"将在 {retry_interval} 秒后重试连接...")
+                await asyncio.sleep(retry_interval)
+            else:
+                logger.error("达到最大重试次数，放弃连接")
+                return False
+        except Exception as e:
+            logger.error(f"发生意外错误: {str(e)}\n{traceback.format_exc()}")
+            return False
+    
+    return False
 
 def parse_args():
     """命令行参数解析"""
@@ -175,11 +214,18 @@ def main():
         logging.getLogger("mcp").setLevel(logging.DEBUG)
         logging.getLogger("httpx").setLevel(logging.DEBUG)
     
-    # 运行测试
-    success = asyncio.run(run_tests(args.url))
-    
-    if not success:
-        sys.exit(1)
+    try:
+        # 运行测试
+        success = asyncio.run(run_tests(args.url))
+        
+        if not success:
+            os._exit(1)
+    except KeyboardInterrupt:
+        logger.info("接收到中断信号 (Ctrl+C)，终止客户端...")
+        os._exit(0)
+    except Exception as e:
+        logger.error(f"客户端运行出错: {str(e)}\n{traceback.format_exc()}")
+        os._exit(1)
 
 if __name__ == "__main__":
     main() 

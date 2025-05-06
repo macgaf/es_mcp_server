@@ -9,6 +9,9 @@ from es_mcp_server.config import es_config
 
 logger = logging.getLogger(__name__)
 
+# 全局客户端实例
+_es_client = None
+
 async def create_es_client() -> Any:
     """
     创建 Elasticsearch 客户端
@@ -17,16 +20,41 @@ async def create_es_client() -> Any:
     返回:
         Elasticsearch 异步客户端实例
     """
+    global _es_client
+    
+    # 如果已有客户端实例且没有关闭，则复用
+    if _es_client is not None:
+        return _es_client
+    
     connection_params = _get_connection_params()
     
     if es_config.es_version == 7:
         # ES7 客户端
         from elasticsearch7 import AsyncElasticsearch
-        return AsyncElasticsearch(**connection_params)
+        _es_client = AsyncElasticsearch(**connection_params)
     else:
         # ES8 客户端
         from elasticsearch import AsyncElasticsearch
-        return AsyncElasticsearch(**connection_params)
+        _es_client = AsyncElasticsearch(**connection_params)
+    
+    return _es_client
+
+async def close_es_client() -> None:
+    """
+    关闭 Elasticsearch 客户端连接
+    在服务器关闭时调用以释放资源
+    """
+    global _es_client
+    
+    if _es_client is not None:
+        logger.info("正在关闭 Elasticsearch 客户端连接...")
+        try:
+            await _es_client.close()
+            logger.info("Elasticsearch 客户端连接已关闭")
+        except Exception as e:
+            logger.error(f"关闭 Elasticsearch 客户端时出错: {str(e)}")
+        finally:
+            _es_client = None
 
 def _get_connection_params() -> Dict[str, Any]:
     """
