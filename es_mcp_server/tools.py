@@ -4,6 +4,7 @@ Elasticsearch MCP 工具实现
 """
 import logging
 from typing import Any, Dict, List, Optional, Union
+from contextlib import asynccontextmanager
 
 from es_mcp_server.client import create_es_client, process_response
 
@@ -16,15 +17,15 @@ async def list_indices() -> List[str]:
     返回:
         list: 索引名称列表
     """
-    client = await create_es_client()
-    try:
-        response = await client.indices.get_alias(index="*")
-        result = await process_response(response)
-        indices = list(result.keys())
-        return indices
-    except Exception as e:
-        logger.error(f"列出索引失败: {str(e)}")
-        raise
+    async with create_es_client() as client:
+        try:
+            response = await client.indices.get_alias(index="*")
+            result = await process_response(response)
+            indices = list(result.keys())
+            return indices
+        except Exception as e:
+            logger.error(f"列出索引失败: {str(e)}")
+            raise
 
 async def get_mappings(index: str) -> Dict[str, Any]:
     """
@@ -36,14 +37,14 @@ async def get_mappings(index: str) -> Dict[str, Any]:
     返回:
         dict: 索引映射信息
     """
-    client = await create_es_client()
-    try:
-        response = await client.indices.get_mapping(index=index)
-        result = await process_response(response)
-        return result
-    except Exception as e:
-        logger.error(f"获取索引 {index} 的映射失败: {str(e)}")
-        raise
+    async with create_es_client() as client:
+        try:
+            response = await client.indices.get_mapping(index=index)
+            result = await process_response(response)
+            return result
+        except Exception as e:
+            logger.error(f"获取索引 {index} 的映射失败: {str(e)}")
+            raise
 
 async def search(
     index: str,
@@ -59,20 +60,20 @@ async def search(
     返回:
         dict: 搜索结果，包含匹配文档和聚合信息
     """
-    client = await create_es_client()
-    try:
-        # 默认启用高亮
-        if "highlight" not in query_body and "query" in query_body:
-            query_body["highlight"] = {
-                "fields": {"*": {}}
-            }
+    async with create_es_client() as client:
+        try:
+            # 默认启用高亮
+            if "highlight" not in query_body and "query" in query_body:
+                query_body["highlight"] = {
+                    "fields": {"*": {}}
+                }
 
-        response = await client.search(index=index, body=query_body)
-        result = await process_response(response)
-        return result
-    except Exception as e:
-        logger.error(f"搜索索引 {index} 失败: {str(e)}")
-        raise
+            response = await client.search(index=index, body=query_body)
+            result = await process_response(response)
+            return result
+        except Exception as e:
+            logger.error(f"搜索索引 {index} 失败: {str(e)}")
+            raise
 
 async def get_cluster_health() -> Dict[str, Any]:
     """
@@ -81,14 +82,14 @@ async def get_cluster_health() -> Dict[str, Any]:
     返回:
         dict: 集群健康信息
     """
-    client = await create_es_client()
-    try:
-        response = await client.cluster.health()
-        result = await process_response(response)
-        return result
-    except Exception as e:
-        logger.error(f"获取集群健康状态失败: {str(e)}")
-        raise
+    async with create_es_client() as client:
+        try:
+            response = await client.cluster.health()
+            result = await process_response(response)
+            return result
+        except Exception as e:
+            logger.error(f"获取集群健康状态失败: {str(e)}")
+            raise
 
 async def get_cluster_stats() -> Dict[str, Any]:
     """
@@ -97,11 +98,11 @@ async def get_cluster_stats() -> Dict[str, Any]:
     返回:
         dict: 集群统计信息
     """
-    client = await create_es_client()
-    try:
-        response = await client.cluster.stats()
-        result = await process_response(response)
-        return result
-    except Exception as e:
-        logger.error(f"获取集群统计信息失败: {str(e)}")
-        raise 
+    async with create_es_client() as client:
+        try:
+            response = await client.cluster.stats()
+            result = await process_response(response)
+            return result
+        except Exception as e:
+            logger.error(f"获取集群统计信息失败: {str(e)}")
+            raise 

@@ -37,16 +37,6 @@ fastmcp = FastMCP()
 # 全局连接状态
 es_connected = False
 
-# 全局任务列表，用于在关闭时取消
-_background_tasks = set()
-
-def create_task(coro):
-    """创建可追踪的后台任务"""
-    task = asyncio.create_task(coro)
-    _background_tasks.add(task)
-    task.add_done_callback(_background_tasks.discard)
-    return task
-
 # 注册 MCP 工具
 @fastmcp.tool(name="list_indices", description="列出所有可用的 Elasticsearch 索引")
 async def mcp_list_indices() -> Dict[str, Any]:
@@ -334,30 +324,7 @@ def setup_signal_handlers(quick_shutdown=False):
         signal.signal(signal.SIGTERM, graceful_exit_handler)
 
 def shutdown_resources():
-    """关闭所有资源和后台任务"""
-    logger.info("正在关闭后台任务...")
-    
-    # 取消所有后台任务
-    for task in list(_background_tasks):
-        if not task.done():
-            logger.debug(f"正在取消任务: {task}")
-            task.cancel()
-    
-    # 尝试关闭 ES 客户端
-    try:
-        from es_mcp_server.client import close_es_client
-        # 使用更新的asyncio API
-        try:
-            loop = asyncio.get_running_loop()
-            if loop.is_running():
-                asyncio.create_task(close_es_client())
-            else:
-                logger.debug("事件循环已停止，无法异步关闭 ES 客户端")
-        except RuntimeError:
-            logger.debug("没有运行中的事件循环，无法异步关闭 ES 客户端")
-    except Exception as e:
-        logger.debug(f"关闭 ES 客户端时出错: {e}")
-    
+    """关闭所有资源和后台任务（当前无后台任务）"""
     logger.info("所有资源已关闭")
 
 async def test_es_connection(retry_count=3, retry_interval=2, skip_check=False):
@@ -383,9 +350,7 @@ async def test_es_connection(retry_count=3, retry_interval=2, skip_check=False):
     
     for attempt in range(retry_count + 1):
         try:
-            client = await create_es_client()
-            # 简单的 ping 测试
-            async with client:
+            async with create_es_client() as client:
                 info = await client.info()
                 logger.info(f"Elasticsearch 连接成功! 版本: {info['version']['number']}")
                 return True

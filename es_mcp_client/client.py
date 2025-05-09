@@ -129,7 +129,7 @@ async def run_tests(url: str):
     for attempt in range(max_retries):
         try:
             # 使用异步上下文管理器创建 SSE 客户端
-            async with sse_client(url, reconnect_interval=1) as (read_stream, write_stream):
+            async with sse_client(url) as (read_stream, write_stream):
                 logger.info("客户端连接成功")
                 
                 # 创建 MCP 会话，设置超时
