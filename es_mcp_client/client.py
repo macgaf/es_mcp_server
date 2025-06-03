@@ -202,6 +202,12 @@ def parse_args():
         action="store_true",
         help="启用调试模式，显示详细日志"
     )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="指定日志文件路径，将日志信息写入该文件"
+    )
     return parser.parse_args()
 
 def main():
@@ -213,6 +219,16 @@ def main():
         logger.setLevel(logging.DEBUG)
         logging.getLogger("mcp").setLevel(logging.DEBUG)
         logging.getLogger("httpx").setLevel(logging.DEBUG)
+    
+    # 如果指定了日志文件，则添加文件处理器
+    if args.log_file:
+        file_handler = logging.FileHandler(args.log_file)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        # 确保文件处理器使用与根日志记录器相同的级别
+        file_handler.setLevel(logger.level)
+        # 将文件处理器添加到根日志记录器，这样所有模块的日志都会写入文件
+        logging.getLogger().addHandler(file_handler)
+        logger.info(f"日志将写入文件: {args.log_file}")
     
     try:
         # 运行测试

@@ -19,7 +19,9 @@ from es_mcp_server.tools import (
     get_mappings,
     search,
     get_cluster_health,
-    get_cluster_stats
+    get_cluster_stats,
+    scroll as es_scroll,
+    clear_scroll
 )
 from es_mcp_server.config import es_config
 
@@ -32,14 +34,18 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # 创建 FastMCP 实例
+# 初始化时不设置端口，后面会根据命令行参数设置
 fastmcp = FastMCP()
 
 # 全局连接状态
 es_connected = False
 
 # 注册 MCP 工具
-@fastmcp.tool(name="list_indices", description="列出所有可用的 Elasticsearch 索引")
+@fastmcp.tool(name="list_indices")
 async def mcp_list_indices() -> Dict[str, Any]:
+    """
+    列出所有可用的 Elasticsearch 索引
+    """
     if not es_connected:
         return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
     try:
@@ -49,8 +55,14 @@ async def mcp_list_indices() -> Dict[str, Any]:
         logger.error(f"列出索引失败: {str(e)}")
         return {"error": str(e)}
 
-@fastmcp.tool(name="get_mappings", description="获取指定 Elasticsearch 索引的字段映射")
+@fastmcp.tool(name="get_mappings")
 async def mcp_get_mappings(index: str) -> Dict[str, Any]:
+    """
+    获取指定 Elasticsearch 索引的字段映射
+    
+    参数:
+        index: 要查询的索引名称
+    """
     if not es_connected:
         return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
     try:
@@ -60,19 +72,72 @@ async def mcp_get_mappings(index: str) -> Dict[str, Any]:
         logger.error(f"获取索引映射失败: {str(e)}")
         return {"error": str(e)}
 
-@fastmcp.tool(name="search", description="执行 Elasticsearch 搜索查询，支持高亮显示")
-async def mcp_search(index: str, queryBody: Dict[str, Any]) -> Dict[str, Any]:
+@fastmcp.tool(name="search")
+async def mcp_search(index: str, queryBody: Dict[str, Any], scroll: str = None, size: int = 1000) -> Dict[str, Any]:
+    """
+    执行 Elasticsearch 搜索查询，支持scroll分页获取大量结果
+    
+    参数:
+        index: 要查询的索引名称
+        queryBody: 搜索查询条件
+        scroll: scroll保持活动的时间 (如 "1m" 表示1分钟)
+        size: 每页返回的文档数量，默认1000，只在scroll不为空的情况下有效
+    
+    返回:
+        dict: 搜索结果，
+            如果scroll为空，返回本次的搜索结果，
+            如果scroll不为空，返回搜索结果的_scroll_id属性为后续scroll的scrollId参数的值
+    """
     if not es_connected:
         return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
     try:
-        results = await search(index, queryBody)
+        # 直接调用合并后的search函数，它会根据scroll参数决定使用哪种模式
+        results = await search(index, queryBody, scroll, size)
         return results
     except Exception as e:
-        logger.error(f"执行搜索查询失败: {str(e)}")
+        logger.error(f"执行{'scroll' if scroll else ''}搜索查询失败: {str(e)}")
         return {"error": str(e)}
 
-@fastmcp.tool(name="get_cluster_health", description="获取 Elasticsearch 集群健康状态信息")
+@fastmcp.tool(name="scroll")
+async def mcp_scroll(scrollId: str, scroll: str = "1m") -> Dict[str, Any]:
+    """
+    获取 scroll API 查询的下一批结果
+    
+    参数:
+        scrollId: 前一次请求返回的结果的_scroll_id属性
+        scroll: scroll保持活动的时间 (如 "1m" 表示1分钟)
+    """
+    if not es_connected:
+        return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
+    try:
+        results = await es_scroll(scrollId, scroll)
+        return results
+    except Exception as e:
+        logger.error(f"获取scroll下一页失败: {str(e)}")
+        return {"error": str(e)}
+
+@fastmcp.tool(name="clear_scroll")
+async def mcp_clear_scroll(scrollId: str) -> Dict[str, Any]:
+    """
+    清除 scroll 查询上下文，释放资源
+    
+    参数:
+        scrollId: 要清除的scroll_id
+    """
+    if not es_connected:
+        return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
+    try:
+        results = await clear_scroll(scrollId)
+        return results
+    except Exception as e:
+        logger.error(f"清除scroll上下文失败: {str(e)}")
+        return {"error": str(e)}
+
+@fastmcp.tool(name="get_cluster_health")
 async def mcp_get_cluster_health() -> Dict[str, Any]:
+    """
+    获取 Elasticsearch 集群健康状态信息
+    """
     if not es_connected:
         return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
     try:
@@ -82,8 +147,11 @@ async def mcp_get_cluster_health() -> Dict[str, Any]:
         logger.error(f"获取集群健康状态失败: {str(e)}")
         return {"error": str(e)}
 
-@fastmcp.tool(name="get_cluster_stats", description="获取 Elasticsearch 集群运行状态统计信息")
+@fastmcp.tool(name="get_cluster_stats")
 async def mcp_get_cluster_stats() -> Dict[str, Any]:
+    """
+    获取 Elasticsearch 集群运行状态统计信息
+    """
     if not es_connected:
         return {"error": "Elasticsearch 连接不可用，请检查连接配置或稍后重试"}
     try:
@@ -166,6 +234,12 @@ def parse_args():
         action="store_true",
         help="使用强制退出模式，完全绕过优雅关闭流程，立即终止进程"
     )
+    parser.add_argument(
+        "--log-file",
+        type=str,
+        default=None,
+        help="指定日志文件路径，将日志信息写入该文件"
+    )
     return parser.parse_args()
 
 async def list_available_tools():
@@ -236,6 +310,16 @@ def main():
         logging.getLogger("elasticsearch").setLevel(logging.DEBUG)
         logging.getLogger("elasticsearch7").setLevel(logging.DEBUG)
     
+    # 如果指定了日志文件，则添加文件处理器
+    if args.log_file:
+        file_handler = logging.FileHandler(args.log_file)
+        file_handler.setFormatter(logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s"))
+        # 确保文件处理器使用与根日志记录器相同的级别
+        file_handler.setLevel(logger.level)
+        # 将文件处理器添加到根日志记录器，这样所有模块的日志都会写入文件
+        logging.getLogger().addHandler(file_handler)
+        logger.info(f"日志将写入文件: {args.log_file}")
+    
     # 更新配置（命令行参数优先）
     if args.host:
         os.environ["ES_HOST"] = args.host
@@ -271,12 +355,13 @@ def main():
         # 如果是 SSE 模式，设置 uvicorn 参数
         if args.transport == "sse":
             logger.info(f"SSE 服务器监听: {args.sse_host}:{args.sse_port}")
-            # 设置 uvicorn 启动参数的环境变量
-            os.environ["UVICORN_HOST"] = args.sse_host
-            os.environ["UVICORN_PORT"] = str(args.sse_port)
+            # 直接设置 FastMCP 的端口
+            fastmcp.settings.port = args.sse_port
+            fastmcp.settings.host = args.sse_host
         
         # 启动 MCP 服务器
         logger.info("MCP 服务器启动中，按 Ctrl+C 可以退出程序...")
+        # 使用命令行参数中的传输模式
         fastmcp.run(transport=args.transport)
     except KeyboardInterrupt:
         # 如果启用了快速关闭，直接退出
