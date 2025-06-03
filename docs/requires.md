@@ -38,10 +38,12 @@ pip install mcp
    5. 同时支持stdio和sse两种transport模式
       1. 前面定义的fastmcp.run(transport='stdio')来实现stdio
       2. 前面定义的fastmcp.run(transport='sse')来实现sse即可，不要显式去启动其他的web服务
+   6. 提供命令行的开关，实现将log写入指定的文件
 3. 提供一个客户端的程序，以验证服务的有效性,包名es_mcp_client，所有客户端代码都在该目录下
    1. 基于mcp.client.sse包的sse_client来实现
    2. 主程序入口为es_mcp_client.client
    3. 支持uvx启动
+   4. 提供命令行的开关，实现将log写入指定的文件
 4. 使用hatchling来打包构建能力，能发布可安装、运行的包
    1. 检查依赖的包是否存在，如果不存在，提前中止
    2. 添加pytest的开发依赖
